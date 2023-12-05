@@ -63,6 +63,8 @@ GO
 CREATE SCHEMA [Uploadfile]
 GO
 
+DROP SCHEMA IF EXISTS [Udt]
+GO
 CREATE SCHEMA [Udt]
 GO
 
@@ -235,6 +237,36 @@ CREATE TABLE [Personnel].[Instructor]
 GO
 
 
+/*
+
+Table: [Academic].[Department]
+
+-- =============================================
+-- Author:		Aryeh Richman
+-- Create date: 12/5/23
+-- Description:	Create a Department table with id and name
+-- =============================================
+
+*/
+DROP TABLE IF EXISTS [Academic].[Department]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [Academic].[Department]
+(
+    DepartmentID [int] NOT NULL IDENTITY(1, 1), -- primary key
+    DepartmentName [char](5) NOT NULL,
+    -- all tables must have the following 3 columns:
+    [UserAuthorizationKey] [Udt].[SurrogateKeyInt] NOT NULL, 
+    [DateAdded] [Udt].[DateAdded] NOT NULL,
+    [DateOfLastUpdate] [Udt].[DateOfLastUpdate] NOT NULL,
+    PRIMARY KEY CLUSTERED(
+	[DepartmentID] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
 
 
 --------------------- Alter Tables To Update Defaults/Constraints -------------------
@@ -272,6 +304,12 @@ GO
 ALTER TABLE [Personnel].[Instructor] ADD  DEFAULT (sysdatetime()) FOR [DateOfLastUpdate]
 GO
 
+-- Aryeh
+ALTER TABLE [Academic].[Department] ADD  DEFAULT (sysdatetime()) FOR [DateAdded]
+GO
+ALTER TABLE [Academic].[Department] ADD  DEFAULT (sysdatetime()) FOR [DateOfLastUpdate]
+GO
+
 -- add check constraints in the following format: 
 -- Aleks
 ALTER TABLE [Process].[WorkflowSteps]  WITH CHECK ADD  CONSTRAINT [FK_WorkFlowSteps_UserAuthorization] FOREIGN KEY([UserAuthorizationKey])
@@ -280,6 +318,12 @@ GO
 ALTER TABLE [Process].[WorkflowSteps] CHECK CONSTRAINT [FK_WorkFlowSteps_UserAuthorization]
 GO
 
+-- Aryeh
+ALTER TABLE [Academic].[Department]  WITH CHECK ADD  CONSTRAINT [FK_Department_UserAuthorization] FOREIGN KEY([UserAuthorizationKey])
+REFERENCES [DbSecurity].[UserAuthorization] ([UserAuthorizationKey])
+GO
+ALTER TABLE [Academic].[Department] CHECK CONSTRAINT [FK_Department_UserAuthorization]
+GO
 
 
 
@@ -463,6 +507,11 @@ BEGIN
     ADD CONSTRAINT FK_WorkFlowSteps_UserAuthorization
         FOREIGN KEY (UserAuthorizationKey)
         REFERENCES [DbSecurity].[UserAuthorization] (UserAuthorizationKey);
+    -- Aryeh
+    ALTER TABLE [Academic].[Department]
+    ADD CONSTRAINT FK_Department_UserAuthorization
+        FOREIGN KEY (UserAuthorizationKey)
+        REFERENCES [DbSecurity].[UserAuthorization] (UserAuthorizationKey);
 
     -- add more here...
 
@@ -514,6 +563,8 @@ BEGIN
 
     -- Aleks
     ALTER TABLE [Process].[WorkflowSteps] DROP CONSTRAINT FK_WorkFlowSteps_UserAuthorization;
+    -- Aryeh
+    ALTER TABLE [Academic].[Department] DROP CONSTRAINT FK_Department_UserAuthorization;
 
     -- add more here...
 
@@ -612,6 +663,8 @@ BEGIN
     TRUNCATE TABLE [DbSecurity].[UserAuthorization]
     TRUNCATE TABLE [Process].[WorkFlowSteps]
     TRUNCATE TABLE [Personnel].[Instructor]
+    -- Aryeh
+    TRUNCATE TABLE [Academic].[Department]
 
 
     -- add more here...
@@ -684,6 +737,13 @@ BEGIN
             TableName = '[Personnel].[Instructor]',
             [Row Count] = COUNT(*)
         FROM [Personnel].[Instructor]
+    -- Aryeh
+    UNION ALL
+        SELECT TableStatus = @TableStatus,
+            TableName = '[Academic].[Department]',
+            [Row Count] = COUNT(*)
+        FROM [Academic].[Department]
+
     -- add more here... 
 
     ;
@@ -709,8 +769,50 @@ GO
 
 
 
+/*
+Stored Procedure: [Project3].[LoadInstructors]
 
+-- =============================================
+-- Author:		Aryeh Richman
+-- Create date: 12/5/23
+-- Description:	Adds the Departments to the Department Table
+-- =============================================
 
+*/
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [Project3].[LoadDepartments] @UserAuthorizationKey INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @DateAdded DATETIME2 = SYSDATETIME();
+    DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
+
+    INSERT INTO [Academic].[Department] (
+        DepartmentName, UserAuthorizationKey, DateAdded
+    )
+    SELECT DISTINCT
+        LEFT([Course (hr, crd)], CHARINDEX(' ', [Course (hr, crd)]) - 1) AS DepartmentName,
+        @UserAuthorizationKey, 
+        @DateAdded
+    FROM [Uploadfile].[CurrentSemesterCourseOfferings]
+    ORDER BY DepartmentName
+
+    DECLARE @WorkFlowStepTableRowCount INT;
+    SET @WorkFlowStepTableRowCount = 0;
+    DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
+    DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
+    EXEC [Process].[usp_TrackWorkFlow] 'Add Department Data',
+                                       @WorkFlowStepTableRowCount,
+                                       @StartingDateTime,
+                                       @EndingDateTime,
+                                       @QueryTime,
+                                       @UserAuthorizationKey;
+END;
+GO
 
 
 ----------------------------------------------- CREATE VIEWS -------------------------------------------------------
@@ -801,7 +903,8 @@ BEGIN
     -- Aleks
     EXEC [Project3].[Load_UserAuthorization] @UserAuthorizationKey = 1
     EXEC [Project3].[LoadInstructors] @UserAuthorizationKey = 1
-
+    -- Aryeh
+    EXEC [Project3].[LoadDepartments] @UserAuthorizationKey = 6
     -- add more here... 
 
 
