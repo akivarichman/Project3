@@ -1,5 +1,5 @@
 --------------------------------------- CREATE THE DATABASE ------------------------------------------
--- Step 1 Instructions: run only lines 4 and 5 using the master databse 
+-- Step 1 Instructions: run only lines 4 and 5 using the master database 
 
 --USE master
 CREATE DATABASE [ClassSchedule_9:15_Group1];
