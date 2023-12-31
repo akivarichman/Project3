@@ -508,13 +508,12 @@ GO
 
 /*
 Table: [Academic].[Section]
-
 -- =============================================
 -- Author:		Sigalita Yakubova
 -- Create date: 12/7/2023
 -- Description:	Load the Section Codes into the Section table
--- =============================================*/
-
+-- =============================================
+*/
 DROP TABLE IF EXISTS [Academic].[Section]
 GO
 SET ANSI_NULLS ON
@@ -523,54 +522,48 @@ SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [Academic].[Section] 
 (
-    SectionID INT NOT NULL IDENTITY(1, 1), -- primary key
-    Section varchar(20) NOT NULL, 
-    Code varchar(20) NOT NULL,
+    SectionID [int] NOT NULL IDENTITY(1, 1), -- primary key
+    SectionNumber CHAR(4) NOT NULL, 
+    SectionCode CHAR(5) NOT NULL,
     CourseID [int] NOT NULL, -- FOREIGN KEY (CourseID) 
     -- all tables must have the following 3 columns:
     [UserAuthorizationKey] [int] NOT NULL, 
     [DateAdded] [datetime2] NOT NULL,
     [DateOfLastUpdate] [datetime2] NOT NULL,
-    PRIMARY KEY CLUSTERED(
-	[SectionId] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+    PRIMARY KEY CLUSTERED ( [SectionID] ASC )
+    WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
 
 /*
-
-Table: [Enrollment].[EnrollmentDetail]
-
+Table: [Enrollment].[EnrollmentDetails]
 -- =============================================
 -- Author:		Ahnaf Ahmed
 -- Create date: 12/8/23
 -- Description:	Create table to store enrollment details for each section
 -- =============================================
-
 */
-DROP TABLE IF EXISTS [Enrollment].[EnrollmentDetail]
+DROP TABLE IF EXISTS [Enrollment].[EnrollmentDetails]
 GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TABLE [Enrollment].[EnrollmentDetail]
+CREATE TABLE [Enrollment].[EnrollmentDetails]
 (
-    [EnrollmentID] INT NOT NULL IDENTITY(1, 1), -- primary key
-	[SectionID] INT NOT NULL, -- Foreign Key (SectionID)
-    [CurrentEnrollment] INT NOT NULL,
-    [MaxEnrollmentLimit] INT NOT NULL,
-	[OverEnrolled] NCHAR(3),
+    [EnrollmentID] [int] NOT NULL IDENTITY(1, 1), -- primary key
+	[SectionID] [int] NOT NULL, -- Foreign Key (SectionID)
+    [CurrentEnrollment] [int] NOT NULL,
+    [MaxEnrollmentLimit] [int] NOT NULL,
+	[OverEnrolled] CHAR(3),
     -- all tables must have the following 3 columns:
     [UserAuthorizationKey] [int] NOT NULL, 
     [DateAdded] [datetime2] NOT NULL,
     [DateOfLastUpdate] [datetime2] NOT NULL,
-    PRIMARY KEY CLUSTERED(
-	[EnrollmentID] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+    PRIMARY KEY CLUSTERED ( [EnrollmentID] ASC )
+    WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
-
 
 --------------------- Alter Tables To Update Defaults -------------------
 
@@ -615,9 +608,9 @@ ALTER TABLE [ClassManagement].[Days] ADD  DEFAULT (sysdatetime()) FOR [DateAdded
 GO
 ALTER TABLE [ClassManagement].[Days] ADD  DEFAULT (sysdatetime()) FOR [DateOfLastUpdate]
 GO
-ALTER TABLE [Enrollment].[EnrollmentDetail] ADD  DEFAULT (sysdatetime()) FOR [DateAdded]
+ALTER TABLE [Enrollment].[EnrollmentDetails] ADD  DEFAULT (sysdatetime()) FOR [DateAdded]
 GO
-ALTER TABLE [Enrollment].[EnrollmentDetail] ADD  DEFAULT (sysdatetime()) FOR [DateOfLastUpdate]
+ALTER TABLE [Enrollment].[EnrollmentDetails] ADD  DEFAULT (sysdatetime()) FOR [DateOfLastUpdate]
 GO
 
 -- Nicholas
@@ -703,13 +696,15 @@ REFERENCES [DbSecurity].[UserAuthorization] ([UserAuthorizationKey])
 GO
 ALTER TABLE [Enrollment].[Semester] CHECK CONSTRAINT [FK_Semester_UserAuthorization]
 GO
-ALTER TABLE [Academic].[Section] WITH CHECK ADD CONSTRAINT [FK_Section_Course] FOREIGN KEY([CourseId])
-REFERENCES [Academic].[Course] ([CourseId])
-GO
 ALTER TABLE [Academic].[Section]  WITH CHECK ADD  CONSTRAINT [FK_Section_UserAuthorization] FOREIGN KEY([UserAuthorizationKey])
 REFERENCES [DbSecurity].[UserAuthorization] ([UserAuthorizationKey])
 GO
 ALTER TABLE [Academic].[Section] CHECK CONSTRAINT [FK_Section_UserAuthorization]
+GO
+ALTER TABLE [Academic].[Section] WITH CHECK ADD CONSTRAINT [FK_Section_Course] FOREIGN KEY([CourseId])
+REFERENCES [Academic].[Course] ([CourseId])
+GO
+ALTER TABLE [Academic].[Section] CHECK CONSTRAINT [FK_Section_Course]
 GO
 
 -- Ahnaf
@@ -720,15 +715,15 @@ ALTER TABLE [ClassManagement].[Days] CHECK CONSTRAINT [FK_Days_UserAuthorization
 GO
 ALTER TABLE [ClassManagement].[Days] ADD CONSTRAINT CHK_DayOfWeek CHECK (DayAbbreviation IN ('M', 'T', 'W', 'TH', 'F', 'S', 'SU'))
 GO
-ALTER TABLE [Enrollment].[EnrollmentDetail]  WITH CHECK ADD  CONSTRAINT [FK_EnrollmentDetail_UserAuthorization] FOREIGN KEY([UserAuthorizationKey])
+ALTER TABLE [Enrollment].[EnrollmentDetails]  WITH CHECK ADD  CONSTRAINT [FK_EnrollmentDetail_UserAuthorization] FOREIGN KEY([UserAuthorizationKey])
 REFERENCES [DbSecurity].[UserAuthorization] ([UserAuthorizationKey])
 GO
-ALTER TABLE [Enrollment].[EnrollmentDetail] CHECK CONSTRAINT [FK_EnrollmentDetail_UserAuthorization]
+ALTER TABLE [Enrollment].[EnrollmentDetails] CHECK CONSTRAINT [FK_EnrollmentDetail_UserAuthorization]
 GO
-ALTER TABLE [Enrollment].[EnrollmentDetail] WITH CHECK ADD CONSTRAINT [FK_EnrollmentDetail_Section] FOREIGN KEY([SectionID])
+ALTER TABLE [Enrollment].[EnrollmentDetails] WITH CHECK ADD CONSTRAINT [FK_EnrollmentDetail_Section] FOREIGN KEY([SectionID])
 REFERENCES [Academic].[Section] ([SectionID])
 GO
-ALTER TABLE [Enrollment].[EnrollmentDetail] CHECK CONSTRAINT [FK_EnrollmentDetail_Section]
+ALTER TABLE [Enrollment].[EnrollmentDetails] CHECK CONSTRAINT [FK_EnrollmentDetail_Section]
 GO
 
 -- Nicholas
@@ -1089,28 +1084,28 @@ BEGIN
     ADD CONSTRAINT FK_Semester_UserAuthorization
         FOREIGN KEY([UserAuthorizationKey])
         REFERENCES [DbSecurity].[UserAuthorization] ([UserAuthorizationKey]);
-    -- ALTER TABLE [Academic].[Section]
-    --     ADD CONSTRAINT FK_Section_UserAuthorization
-    --     FOREIGN KEY (UserAuthorizationKey)
-    --     REFERENCES [DbSecurity].[UserAuthorization] (UserAuthorizationKey);
-    -- ALTER TABLE [Academic].[Section]
-    -- ADD CONSTRAINT FK_Section_Course
-    --     FOREIGN KEY (CourseID)
-    --     REFERENCES [Academic].[Course] (CourseID)
+    ALTER TABLE [Academic].[Section]
+        ADD CONSTRAINT FK_Section_UserAuthorization
+        FOREIGN KEY (UserAuthorizationKey)
+        REFERENCES [DbSecurity].[UserAuthorization] (UserAuthorizationKey);
+    ALTER TABLE [Academic].[Section]
+    ADD CONSTRAINT FK_Section_Course
+        FOREIGN KEY (CourseID)
+        REFERENCES [Academic].[Course] (CourseID)
 
     -- Ahnaf 
     ALTER TABLE [ClassManagement].[Days]
     ADD CONSTRAINT FK_Days_UserAuthorization
         FOREIGN KEY (UserAuthorizationKey)
         REFERENCES [DbSecurity].[UserAuthorization] (UserAuthorizationKey);
-    -- ALTER TABLE [Enrollment].[EnrollmentDetail]
-    -- ADD CONSTRAINT FK_EnrollmentDetail_UserAuthorization
-    --     FOREIGN KEY (UserAuthorizationKey)
-    --     REFERENCES [DbSecurity].[UserAuthorization] (UserAuthorizationKey);
-    -- ALTER TABLE [Enrollment].[EnrollmentDetail]
-    -- ADD CONSTRAINT FK_EnrollmentDetail_Section
-    --     FOREIGN KEY (SectionID)
-    --     REFERENCES [Academic].[Section] ([SectionID]);
+    ALTER TABLE [Enrollment].[EnrollmentDetails]
+    ADD CONSTRAINT FK_EnrollmentDetail_UserAuthorization
+        FOREIGN KEY (UserAuthorizationKey)
+        REFERENCES [DbSecurity].[UserAuthorization] (UserAuthorizationKey);
+    ALTER TABLE [Enrollment].[EnrollmentDetails]
+    ADD CONSTRAINT FK_EnrollmentDetail_Section
+        FOREIGN KEY (SectionID)
+        REFERENCES [Academic].[Section] ([SectionID]);
 
     -- Nicholas
     ALTER TABLE [ClassManagement].[ModeOfInstruction]  
@@ -1223,8 +1218,8 @@ BEGIN
 
     -- Ahnaf
     ALTER TABLE [ClassManagement].[Days] DROP CONSTRAINT [FK_Days_UserAuthorization];
-    -- ALTER TABLE [Enrollment].[EnrollmentDetail] DROP CONSTRAINT [FK_EnrollmentDetail_UserAuthorization];
-    -- ALTER TABLE [Enrollment].[EnrollmentDetail] DROP CONSTRAINT [FK_EnrollmentDetail_Section];
+    ALTER TABLE [Enrollment].[EnrollmentDetails] DROP CONSTRAINT [FK_EnrollmentDetail_UserAuthorization];
+    ALTER TABLE [Enrollment].[EnrollmentDetails] DROP CONSTRAINT [FK_EnrollmentDetail_Section];
 
     -- Nicholas
     ALTER TABLE [ClassManagement].[ModeOfInstruction] DROP CONSTRAINT [FK_ModeOfInst_UserAuthorization];
@@ -1238,8 +1233,8 @@ BEGIN
 
     -- Sigi
     ALTER TABLE [Enrollment].[Semester] DROP CONSTRAINT FK_Semester_UserAuthorization;
-    -- ALTER TABLE [Academic].[Section] DROP CONSTRAINT [FK_Section_UserAuthorization];
-    -- ALTER TABLE [Academic].[Section] DROP CONSTRAINT [FK_Section_Course];
+    ALTER TABLE [Academic].[Section] DROP CONSTRAINT [FK_Section_UserAuthorization];
+    ALTER TABLE [Academic].[Section] DROP CONSTRAINT [FK_Section_Course];
 
     -- Aryeh
     ALTER TABLE [Academic].[Department] DROP CONSTRAINT FK_Department_UserAuthorization;
@@ -1317,11 +1312,11 @@ BEGIN
 
     -- Ahnaf
     TRUNCATE TABLE [ClassManagement].[Days]
-	-- TRUNCATE TABLE [Enrollment].[EnrollmentDetail]
+	TRUNCATE TABLE [Enrollment].[EnrollmentDetails]
 
     -- Sigi
     TRUNCATE TABLE [Enrollment].[Semester]
-    -- TRUNCATE TABLE [Academic].[Section]
+    TRUNCATE TABLE [Academic].[Section]
 
     -- Edwin
     TRUNCATE TABLE [Facilities].[BuildingLocations]
@@ -1398,11 +1393,11 @@ BEGIN
             TableName = '[ClassManagement].[Days]',
             [Row Count] = COUNT(*)
         FROM [ClassManagement].[Days]
-    -- UNION ALL
-    --     SELECT TableStatus = @TableStatus,
-    --         TableName = '[Enrollment].[EnrollmentDetail]',
-    --         [Row Count] = COUNT(*)
-    --     FROM [Enrollment].[EnrollmentDetail]
+    UNION ALL
+        SELECT TableStatus = @TableStatus,
+            TableName = '[Enrollment].[EnrollmentDetails]',
+            [Row Count] = COUNT(*)
+        FROM [Enrollment].[EnrollmentDetails]
 
     -- Nicholas 
     UNION ALL
@@ -1427,11 +1422,11 @@ BEGIN
             TableName = '[Enrollment].[Semester]',
             [Row Count] = COUNT(*)
         FROM [Enrollment].[Semester]
-    -- UNION ALL
-    --     SELECT TableStatus = @TableStatus,
-    --         TableName = '[Academic].[Section]',
-    --         [Row Count] = COUNT(*)
-    --     FROM [Academic].[Section]
+    UNION ALL
+        SELECT TableStatus = @TableStatus,
+            TableName = '[Academic].[Section]',
+            [Row Count] = COUNT(*)
+        FROM [Academic].[Section]
 
     -- Aryeh
     UNION ALL
@@ -1635,15 +1630,12 @@ GO
 
 /*
 Stored Procedure: [Project3].[LoadSections]
-
 -- =============================================
 -- Author:		Sigalita Yakubova
 -- Create date: 12/4/23
 -- Description:	Loads in the Section Table
 -- =============================================
-
 */
-
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1652,26 +1644,26 @@ CREATE OR ALTER PROCEDURE [Project3].[LoadSections] @UserAuthorizationKey INT
 AS
 BEGIN
     SET NOCOUNT ON;
-    DECLARE @DateAdded DATETIME2 = SYSDATETIME();
     DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
 
-    INSERT INTO [Academic].[Section] (Section, Code, CourseID, UserAuthorizationKey, DateAdded)
+    INSERT INTO [Academic].[Section] (SectionNumber, SectionCode, CourseID, UserAuthorizationKey)
     SELECT DISTINCT
         Upload.Sec,
         Upload.Code,
         (
             SELECT TOP 1 C.CourseId
             FROM [Academic].[Course] AS C
+                INNER JOIN [Academic].[Department] AS D
+                    ON C.DepartmentID = D.DepartmentID
             WHERE 
-                C.CourseAbbreviation = LEFT(Upload.[Course (hr, crd)], PATINDEX('%[ (]%', Upload.[Course (hr, crd)]) - 1) AND 
+                D.DepartmentName = LEFT(Upload.[Course (hr, crd)], PATINDEX('%[ (]%', Upload.[Course (hr, crd)]) - 1) AND 
                 C.CourseNumber = SUBSTRING(
                     Upload.[Course (hr, crd)], 
                     PATINDEX('%[0-9]%', Upload.[Course (hr, crd)]), 
                     CHARINDEX('(', Upload.[Course (hr, crd)]) - PATINDEX('%[0-9]%', Upload.[Course (hr, crd)])
                 )
         ) AS CourseID,
-        @UserAuthorizationKey,
-        @DateAdded
+        @UserAuthorizationKey
     FROM
         [Uploadfile].[CurrentSemesterCourseOfferings] AS Upload;
 
@@ -1735,34 +1727,30 @@ END;
 GO
 
 /*
-Stored Procedure: [Project3].[LoadEnrollmentDetail]
-
+Stored Procedure: [Project3].[LoadEnrollmentDetails]
 -- =============================================
 -- Author:		Ahnaf Ahmed
 -- Create date: 12/8/23
--- Description:	Loads in the EnrollmentDetail Table
+-- Description:	Loads in the EnrollmentDetails Table
 -- =============================================
-
 */
-
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE OR ALTER PROCEDURE [Project3].[LoadEnrollmentDetail] @UserAuthorizationKey INT
+CREATE OR ALTER PROCEDURE [Project3].[LoadEnrollmentDetails] @UserAuthorizationKey INT
 AS
 BEGIN
     SET NOCOUNT ON;
-    DECLARE @DateAdded DATETIME2 = SYSDATETIME();
     DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
 
-    INSERT INTO [Enrollment].[EnrollmentDetail]
+    INSERT INTO [Enrollment].[EnrollmentDetails]
 	(SectionID,
 		CurrentEnrollment,
 		MaxEnrollmentLimit,
 		OverEnrolled,
-		UserAuthorizationKey,
-		DateAdded)
+		UserAuthorizationKey
+	)
     SELECT DISTINCT
         S.SectionID,
 		CAST(Upload.Enrolled AS INT),
@@ -1771,21 +1759,20 @@ BEGIN
 			WHEN CAST(Upload.Enrolled AS INT) <= CAST(Upload.Limit AS INT) THEN 'No'
 			ELSE 'Yes'
 		END,
-        @UserAuthorizationKey,
-        @DateAdded
+        @UserAuthorizationKey
     FROM
         [Uploadfile].[CurrentSemesterCourseOfferings] AS Upload
 		INNER JOIN [Academic].[Section] AS S
-		ON Upload.Code = S.Code
+		ON Upload.Code = S.SectionCode
 
     DECLARE @WorkFlowStepTableRowCount INT;
     SET @WorkFlowStepTableRowCount = (
                                     SELECT COUNT(*) 
-                                    FROM [Enrollment].[EnrollmentDetail]
+                                    FROM [Enrollment].[EnrollmentDetails]
                                     );
     DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
     DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
-    EXEC [Process].[usp_TrackWorkFlow] 'Procedure: [Project3].[LoadEnrollmentDetail] loads [EnrollmentDetail] table',
+    EXEC [Process].[usp_TrackWorkFlow] 'Procedure: [Project3].[LoadEnrollmentDetails] loads [EnrollmentDetails] table',
                                        @WorkFlowStepTableRowCount,
                                        @StartingDateTime,
                                        @EndingDateTime,
@@ -2368,11 +2355,11 @@ BEGIN
 
     -- TIER 3 TABLES LOAD	
     --Sigi
-    -- EXEC [Project3].[LoadSections] @UserAuthorizationKey = 2
+    EXEC [Project3].[LoadSections] @UserAuthorizationKey = 2
 	-- Edwin
     -- EXEC [Project3].[LoadClass] @UserAuthorizationKey = 4
 	-- Ahnaf
-	-- EXEC [Project3].[LoadEnrollmentDetail] @UserAuthorizationKey = 5
+	EXEC [Project3].[LoadEnrollmentDetail] @UserAuthorizationKey = 5
 
 	-- TIER 4 TABLES LOAD
 	-- Nicholas 
