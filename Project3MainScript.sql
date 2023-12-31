@@ -372,11 +372,10 @@ GO
 CREATE TABLE [Academic].[Course] 
 (
     CourseID [int] NOT NULL IDENTITY(1, 1), -- primary key
-    CourseAbbreviation CHAR(5) NOT NULL, -- needs check constraint 
-    CourseNumber CHAR(5) NOT NULL, 
+    CourseNumber CHAR(5) NOT NULL,
+    CourseName CHAR(35) NOT NULL,
     CourseCredit FLOAT NOT NULL, -- (Needs Check Constraint to be positive)
-    CreditHours [Udt].[CreditHours] NOT NULL, -- CreditHours (Needs Check Constraint) -> should be positive, possibly a UDT
-    CourseName CHAR(35) NOT NULL, -- CourseDescription
+    CreditHours FLOAT NOT NULL, -- CreditHours (Needs Check Constraint) -> should be positive, possibly a UDT
     DepartmentID [int] NOT NULL, -- FOREIGN KEY (DepartmentID) REFERENCES Department(DepartmentID)
     -- all tables must have the following 3 columns:
     [UserAuthorizationKey] [int] NOT NULL, 
@@ -387,7 +386,14 @@ CREATE TABLE [Academic].[Course]
 ) ON [PRIMARY]
 GO
 
--- Nicholas
+/*
+Table: [Facilities].[RoomLocation]
+-- =============================================
+-- Author:		Nicholas Kong
+-- Create date: 
+-- Description:	
+-- =============================================
+*/
 DROP TABLE IF EXISTS [Facilities].[RoomLocation]
 GO
 SET ANSI_NULLS ON
@@ -396,7 +402,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [Facilities].[RoomLocation] (
     RoomID [int] NOT NULL IDENTITY(1,1), -- primary key
-	RoomNumber VARCHAR(12) NOT NULL, -- might need to change data type
+	RoomNumber CHAR(5) NOT NULL,
     BuildingID INT NOT NULL,
     -- all tables must have the following 3 columns:
     [UserAuthorizationKey] [int] NOT NULL, 
@@ -603,8 +609,6 @@ ALTER TABLE [Academic].[Course] ADD  DEFAULT (sysdatetime()) FOR [DateAdded]
 GO
 ALTER TABLE [Academic].[Course] ADD  DEFAULT (sysdatetime()) FOR [DateOfLastUpdate]
 GO
-ALTER TABLE [Academic].[Course] ADD DEFAULT ('unknown') FOR [CourseName]
-GO
 
 -- Ahnaf
 ALTER TABLE [ClassManagement].[Days] ADD  DEFAULT (sysdatetime()) FOR [DateAdded]
@@ -680,7 +684,9 @@ GO
 ALTER TABLE [Academic].[Course] WITH CHECK ADD CONSTRAINT [FK_Course_DepartmentID] FOREIGN KEY([DepartmentID])
 REFERENCES [Academic].[Department] ([DepartmentID])
 GO
-ALTER TABLE [Academic].[Course] WITH CHECK ADD  CONSTRAINT [FK_Course_UserAuthorization] FOREIGN KEY([UserAuthorizationKey])
+ALTER TABLE [Academic].[Course] CHECK CONSTRAINT [FK_Course_DepartmentID]
+GO
+ALTER TABLE [Academic].[Course] WITH CHECK ADD CONSTRAINT [FK_Course_UserAuthorization] FOREIGN KEY([UserAuthorizationKey])
 REFERENCES [DbSecurity].[UserAuthorization] ([UserAuthorizationKey])
 GO
 ALTER TABLE [Academic].[Course] CHECK CONSTRAINT [FK_Course_UserAuthorization]
@@ -735,6 +741,11 @@ ALTER TABLE [Facilities].[RoomLocation]  WITH CHECK ADD  CONSTRAINT [FK_RoomLoca
 REFERENCES [DbSecurity].[UserAuthorization] ([UserAuthorizationKey])
 GO
 ALTER TABLE [Facilities].[RoomLocation]  CHECK CONSTRAINT [FK_RoomLocation_UserAuthorization]
+GO
+ALTER TABLE [Facilities].[RoomLocation]  WITH CHECK ADD  CONSTRAINT [FK_RoomLocation_BuildingLocations] FOREIGN KEY([BuildingID])
+REFERENCES [Facilities].[BuildingLocations] ([BuildingID])
+GO
+ALTER TABLE [Facilities].[RoomLocation]  CHECK CONSTRAINT [FK_RoomLocation_BuildingLocations]
 GO
 ALTER TABLE  [ClassManagement].[Schedule]  WITH CHECK ADD  CONSTRAINT [FK_Schedule_UserAuthorization] FOREIGN KEY([UserAuthorizationKey])
 REFERENCES [DbSecurity].[UserAuthorization] ([UserAuthorizationKey])
@@ -1034,14 +1045,14 @@ BEGIN
     ADD CONSTRAINT FK_Instructor_UserAuthorization 
         FOREIGN KEY(UserAuthorizationKey)
         REFERENCES [DbSecurity].[UserAuthorization] (UserAuthorizationKey);
-    -- ALTER TABLE [Academic].[Course]
-    -- ADD CONSTRAINT FK_Course_UserAuthorization
-    --     FOREIGN KEY (UserAuthorizationKey)
-    --     REFERENCES [DbSecurity].[UserAuthorization] (UserAuthorizationKey);
-    -- ALTER TABLE [Academic].[Course]
-    -- ADD CONSTRAINT FK_Course_DepartmentID
-    --     FOREIGN KEY (DepartmentID)
-    --     REFERENCES [Academic].[Department] (DepartmentID)
+    ALTER TABLE [Academic].[Course]
+    ADD CONSTRAINT FK_Course_UserAuthorization
+        FOREIGN KEY (UserAuthorizationKey)
+        REFERENCES [DbSecurity].[UserAuthorization] (UserAuthorizationKey);
+    ALTER TABLE [Academic].[Course]
+    ADD CONSTRAINT FK_Course_DepartmentID
+        FOREIGN KEY (DepartmentID)
+        REFERENCES [Academic].[Department] (DepartmentID)
 
     -- Aryeh
     ALTER TABLE [Academic].[Department]
@@ -1106,11 +1117,15 @@ BEGIN
     ADD CONSTRAINT FK_ModeOfInst_UserAuthorization
         FOREIGN KEY([UserAuthorizationKey])
         REFERENCES [DbSecurity].[UserAuthorization] ([UserAuthorizationKey]);
-	-- ALTER TABLE [Facilites].[RoomLocation]  
-    -- ADD CONSTRAINT FK_RoomLocation_UserAuthorization 
-    --     FOREIGN KEY([UserAuthorizationKey])
-    --     REFERENCES [DbSecurity].[UserAuthorization] ([UserAuthorizationKey]);
-	-- ALTER TABLE  [ClassManagement].[Schedule]
+	ALTER TABLE [Facilities].[RoomLocation]  
+    ADD CONSTRAINT FK_RoomLocation_UserAuthorization 
+        FOREIGN KEY([UserAuthorizationKey])
+        REFERENCES [DbSecurity].[UserAuthorization] ([UserAuthorizationKey]);
+    ALTER TABLE [Facilities].[RoomLocation]  
+    ADD CONSTRAINT FK_RoomLocation_BuildingLocations
+        FOREIGN KEY([BuildingID])
+        REFERENCES [Facilities].[BuildingLocations] ([BuildingID]);
+    -- ALTER TABLE  [ClassManagement].[Schedule]
     -- ADD CONSTRAINT FK_Schedule_UserAuthorization 
     --     FOREIGN KEY([UserAuthorizationKey])
     --     REFERENCES [DbSecurity].[UserAuthorization] ([UserAuthorizationKey]);
@@ -1203,8 +1218,8 @@ BEGIN
     -- Aleks
     ALTER TABLE [Process].[WorkflowSteps] DROP CONSTRAINT [FK_WorkFlowSteps_UserAuthorization];
     ALTER TABLE [Personnel].[Instructor] DROP CONSTRAINT [FK_Instructor_UserAuthorization];
-    -- ALTER TABLE [Academic].[Course] DROP CONSTRAINT [FK_Course_UserAuthorization];
-    -- ALTER TABLE [Academic].[Course] DROP CONSTRAINT [FK_Course_DepartmentID];
+    ALTER TABLE [Academic].[Course] DROP CONSTRAINT [FK_Course_UserAuthorization];
+    ALTER TABLE [Academic].[Course] DROP CONSTRAINT [FK_Course_DepartmentID];
 
     -- Ahnaf
     ALTER TABLE [ClassManagement].[Days] DROP CONSTRAINT [FK_Days_UserAuthorization];
@@ -1213,7 +1228,8 @@ BEGIN
 
     -- Nicholas
     ALTER TABLE [ClassManagement].[ModeOfInstruction] DROP CONSTRAINT [FK_ModeOfInst_UserAuthorization];
-    -- ALTER TABLE [Facilities].[RoomLocation] DROP CONSTRAINT [FK_RoomLocation_UserAuthorization];
+    ALTER TABLE [Facilities].[RoomLocation] DROP CONSTRAINT [FK_RoomLocation_UserAuthorization];
+    ALTER TABLE [Facilities].[RoomLocation] DROP CONSTRAINT [FK_RoomLocation_BuildingLocations];
     -- ALTER TABLE [ClassManagement].[Schedule] DROP CONSTRAINT [FK_Schedule_UserAuthorization];
     -- ALTER TABLE [ClassManagement].[Schedule]  DROP CONSTRAINT [FK_Schedule_RoomLocation];
     -- ALTER TABLE [ClassManagement].[Schedule]  DROP CONSTRAINT [FK_Schedule_Section];
@@ -1287,7 +1303,7 @@ BEGIN
     TRUNCATE TABLE [DbSecurity].[UserAuthorization]
     TRUNCATE TABLE [Process].[WorkFlowSteps]
     TRUNCATE TABLE [Personnel].[Instructor]
-    -- TRUNCATE TABLE [Academic].[Course]
+    TRUNCATE TABLE [Academic].[Course]
 
     -- Aryeh
     TRUNCATE TABLE [Academic].[Department]
@@ -1296,7 +1312,7 @@ BEGIN
 
 	-- Nicholas
 	TRUNCATE TABLE [ClassManagement].[ModeOfInstruction]
-	-- TRUNCATE TABLE [Facilities].[RoomLocation]
+	TRUNCATE TABLE [Facilities].[RoomLocation]
 	-- TRUNCATE TABLE [ClassManagement].[Schedule]
 
     -- Ahnaf
@@ -1370,11 +1386,11 @@ BEGIN
             TableName = '[Personnel].[Instructor]',
             [Row Count] = COUNT(*)
         FROM [Personnel].[Instructor]
-    -- UNION ALL
-    --     SELECT TableStatus = @TableStatus,
-    --         TableName = '[Academic].[Course]',
-    --         [Row Count] = COUNT(*)
-    --     FROM [Academic].[Course] 
+    UNION ALL
+        SELECT TableStatus = @TableStatus,
+            TableName = '[Academic].[Course]',
+            [Row Count] = COUNT(*)
+        FROM [Academic].[Course]
 
     -- Ahnaf
     UNION ALL
@@ -1394,11 +1410,11 @@ BEGIN
             TableName = '[ClassManagement].[ModeOfInstruction]',
             [Row Count] = COUNT(*)
         FROM [ClassManagement].[ModeOfInstruction]
-	-- UNION ALL
-    --     SELECT TableStatus = @TableStatus,
-    --         TableName = '[Facilities].[RoomLocation]',
-    --         [Row Count] = COUNT(*)
-    --     FROM [Facilities].[RoomLocation]
+	UNION ALL
+        SELECT TableStatus = @TableStatus,
+            TableName = '[Facilities].[RoomLocation]',
+            [Row Count] = COUNT(*)
+        FROM [Facilities].[RoomLocation]
 	-- UNION ALL
     --     SELECT TableStatus = @TableStatus,
     --         TableName = '[ClassManagement].[Schedule]',
@@ -1509,11 +1525,14 @@ BEGIN
 END;
 GO
 
+/*
+Stored Procedure: [Project3].[LoadCourse]
 -- =============================================
 -- Author:		Aleksandra Georgievska
 -- Create date: 12/4/23
 -- Description:	Adds the Courses to the Course Table
 -- =============================================
+*/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -1522,26 +1541,26 @@ CREATE OR ALTER PROCEDURE [Project3].[LoadCourse] @UserAuthorizationKey INT
 AS
 BEGIN
     SET NOCOUNT ON;
-    DECLARE @DateAdded DATETIME2 = SYSDATETIME();
     DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
 
     INSERT INTO [Academic].[Course](
-        [CourseAbbreviation] -- Course (parse letters)
-        ,[CourseNumber] -- Course (parse number)
-        ,[CourseCredit] -- Course (parse second number in (,))
-        ,[CreditHours] -- Course (parse first number in (,))
-        ,[CourseName] -- Description 
-        ,[DepartmentID] -- fk
-        ,UserAuthorizationKey
-        ,DateAdded
+        [DepartmentID], -- fk
+        [CourseNumber], -- Course (parse number)
+        [CourseName], -- Description 
+        [CourseCredit], -- Course (parse second number in (,))
+        [CreditHours], -- Course (parse first number in (,))
+        UserAuthorizationKey
     )
     SELECT DISTINCT
-        LEFT([Course (hr, crd)], PATINDEX('%[ (]%', [Course (hr, crd)]) - 1) -- CourseAbbreviation
+        ( SELECT TOP 1 D.DepartmentID
+          FROM [Academic].[Department] AS D
+          WHERE D.DepartmentName = LEFT([Course (hr, crd)], PATINDEX('%[ (]%', [Course (hr, crd)]) - 1)) -- DepartmentID
         ,SUBSTRING(
                 [Course (hr, crd)], 
                 PATINDEX('%[0-9]%', [Course (hr, crd)]), 
                 CHARINDEX('(', [Course (hr, crd)]) - PATINDEX('%[0-9]%', [Course (hr, crd)])
             ) -- CourseNumber
+        ,C.Description -- CourseName
         ,CAST(SUBSTRING(
                 [Course (hr, crd)], 
                 CHARINDEX(',', [Course (hr, crd)]) + 2, 
@@ -1552,12 +1571,7 @@ BEGIN
                 CHARINDEX('(', [Course (hr, crd)]) + 1, 
                 CHARINDEX(',', [Course (hr, crd)]) - CHARINDEX('(', [Course (hr, crd)]) - 1
                 ) AS FLOAT) -- CreditHours 
-        ,C.Description -- CourseName
-        , ( SELECT TOP 1 D.DepartmentID
-            FROM [Academic].[Department] AS D
-            WHERE D.DepartmentName = LEFT([Course (hr, crd)], PATINDEX('%[ (]%', [Course (hr, crd)]) - 1))  
-        ,@UserAuthorizationKey 
-        ,@DateAdded
+        ,@UserAuthorizationKey
     FROM
     [Uploadfile].[CurrentSemesterCourseOfferings] AS C;
 
@@ -1568,7 +1582,7 @@ BEGIN
                                     );
     DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
     DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
-    EXEC [Process].[usp_TrackWorkFlow] 'Add Instructor Data',
+    EXEC [Process].[usp_TrackWorkFlow] 'Add Course Data',
                                        @WorkFlowStepTableRowCount,
                                        @StartingDateTime,
                                        @EndingDateTime,
@@ -1677,7 +1691,6 @@ BEGIN
 END;
 GO
 
-
 /*
 Stored Procedure: [Project3].[LoadDays]
 -- =============================================
@@ -1781,7 +1794,6 @@ BEGIN
 END;
 GO
 
-
 /*
 Stored Procedure: [Project3].[LoadModeOfInstruction]
 -- =============================================
@@ -1821,40 +1833,44 @@ BEGIN
 END;
 GO
 
+
+/*
+Stored Procedure: [Project3].[LoadRoomLocation]
 -- =============================================
 -- Author:		Nicholas Kong
 -- Create date: 12/6/23
 -- Description:	Populate a table to show the room location
 -- =============================================
-
+*/
 CREATE OR ALTER PROCEDURE [Project3].[LoadRoomLocation]
-    -- Add parameters if needed
     @UserAuthorizationKey INT
 AS
 BEGIN
-
     SET NOCOUNT ON;
-    DECLARE @DateAdded DATETIME2 = SYSDATETIME();
-    DECLARE @DateOfLastUpdate DATETIME2 = SYSDATETIME();
     DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
 
-	INSERT INTO [Facilities].[RoomLocation](RoomNumber,UserAuthorizationKey, DateAdded)
-	SELECT
-    CASE
-		-- add the edge cases and then manually set it correctly
-        WHEN RIGHT(Q.Location, 4) = 'H 17' THEN '17'
-        WHEN RIGHT(Q.Location, 4) = '135H' THEN 'A135H'
-		WHEN RIGHT(Q.Location, 4) = '135B' THEN 'A135B'
-		WHEN RIGHT(Q.Location, 4) = 'H 09' THEN '09'
-		WHEN RIGHT(Q.Location, 4) = 'H 12' THEN '12'
-
-		-- checks for null and empty string, if so set default string named TBD
-       WHEN Q.Location IS NULL OR LTRIM(RTRIM(Q.Location)) = '' THEN 'TBD'
-        ELSE RIGHT(Q.Location, 4)
-    END AS RoomNumber, @UserAuthorizationKey, @DateAdded
-	FROM [QueensClassSchedule].[Uploadfile].[CurrentSemesterCourseOfferings] as Q
-
-    -- Additional statements or constraints can be added here
+	INSERT INTO [Facilities].[RoomLocation](BuildingID, RoomNumber, UserAuthorizationKey)
+    SELECT
+        ( SELECT TOP 1 B.BuildingID
+          FROM [Facilities].[BuildingLocations] AS B
+          WHERE B.BuildingAbbrv = LEFT(Q.Location, CHARINDEX(' ', Q.Location) - 1)) AS BuildingID, -- BuildingID
+        CASE
+		    -- add the edge cases and then manually set it correctly
+            WHEN RIGHT(Q.Location, 4) = 'H 17' THEN '17'
+            WHEN RIGHT(Q.Location, 4) = '135H' THEN 'A135H'
+		    WHEN RIGHT(Q.Location, 4) = '135B' THEN 'A135B'
+            WHEN RIGHT(Q.Location, 4) = 'H 08' THEN '08'
+		    WHEN RIGHT(Q.Location, 4) = 'H 09' THEN '09'
+		    WHEN RIGHT(Q.Location, 4) = 'H 12' THEN '12'
+            WHEN RIGHT(Q.Location, 4) = 'H 17' THEN '17'
+            WHEN RIGHT(Q.Location, 4) = 'A 11' THEN '11'
+		    -- checks for null and empty string, if so set default string named TBD
+            WHEN Q.Location IS NULL OR LTRIM(RTRIM(Q.Location)) = '' THEN 'TBD'
+            ELSE LTRIM(RTRIM(RIGHT(Q.Location, 4)))
+        END AS RoomNumber, @UserAuthorizationKey
+    FROM [Uploadfile].[CurrentSemesterCourseOfferings] as Q
+    WHERE CHARINDEX(' ', Location) > 0
+    GROUP BY Q.[Location]
 
     DECLARE @WorkFlowStepTableRowCount INT;
     SET @WorkFlowStepTableRowCount = (
@@ -1869,7 +1885,6 @@ BEGIN
                                        @EndingDateTime,
                                        @QueryTime,
                                        @UserAuthorizationKey;
-
 END;
 GO
 
@@ -2262,10 +2277,6 @@ GO
 -- add more stored procedures here... 
 
 
------------------------------------------------ CREATE VIEWS -------------------------------------------------------
-
-
-
 --------------------------------------- DB CONTROLLER STORED PROCEDURES ----------------------------------------------
 
 /*
@@ -2348,21 +2359,18 @@ BEGIN
 
     -- TIER 2 TABLES LOAD
     -- Aleks
-    -- EXEC [Project3].[LoadCourse] @UserAuthorizationKey = 1
+    EXEC [Project3].[LoadCourse] @UserAuthorizationKey = 1
     -- Aryeh
     EXEC [Project3].[LoadDepartmentInstructor] @UserAuthorizationKey = 6
-
     -- Nicholas
-    -- EXEC [Project3].[LoadRoomLocation]  @UserAuthorizationKey = 3
+    EXEC [Project3].[LoadRoomLocation]  @UserAuthorizationKey = 3
 
 
     -- TIER 3 TABLES LOAD	
     --Sigi
     -- EXEC [Project3].[LoadSections] @UserAuthorizationKey = 2
-
 	-- Edwin
     -- EXEC [Project3].[LoadClass] @UserAuthorizationKey = 4
-
 	-- Ahnaf
 	-- EXEC [Project3].[LoadEnrollmentDetail] @UserAuthorizationKey = 5
 
