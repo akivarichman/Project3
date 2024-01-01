@@ -7,7 +7,6 @@ GO
 -- Proposition:	Which instructors are teaching in classes in multiple departments?
 -- =============================================*/
 -- 1
-
 SELECT DI.InstructorID, I.FirstName, I.LastName
 FROM Personnel.DepartmentInstructor AS DI
     INNER JOIN Personnel.Instructor AS I 
@@ -16,14 +15,12 @@ GROUP BY DI.InstructorID,  I.FirstName, I.LastName
 HAVING COUNT(DISTINCT DI.DepartmentID) > 1
 ORDER BY DI.InstructorID;
 
-
 /* =============================================
 -- Author:		Edwin Wray
 -- Create date: 12/10/23
 -- Proposition:	How many instructors are in each department?
 -- =============================================*/
 -- 2
-
 GO
 SELECT D.DepartmentID, D.DepartmentName, COUNT(DI.InstructorID) AS NumberOfInstructors
 FROM Academic.Department AS D
@@ -31,7 +28,6 @@ FROM Academic.Department AS D
         ON D.DepartmentID = DI.DepartmentID
 GROUP BY D.DepartmentID, D.DepartmentName
 ORDER BY D.DepartmentID;
-
     
 /* =============================================
 -- Author:		Edwin Wray
@@ -41,7 +37,6 @@ ORDER BY D.DepartmentID;
                 total class limit and the percentage of Enrollment.
 -- =============================================*/
 -- 3
-
 GO
 SELECT DISTINCT
     C.CourseID, C.CourseName
@@ -61,7 +56,6 @@ GROUP BY
 ORDER BY
     C.CourseID;
 
-
 ------------------------------ 10 additional queries ----------------------------------
 
 /* =============================================
@@ -70,7 +64,6 @@ ORDER BY
 -- Proposition:	Which department offers the most number of courses 
 -- =============================================*/
 -- 1
-
 GO
 WITH DepartmentCourseCount AS (
     SELECT 
@@ -85,14 +78,12 @@ SELECT TOP 1
 FROM DepartmentCourseCount
 ORDER BY NumberOfCoursesOffered DESC;
 
-
 /* =============================================
 -- Author:		Aleksandra Georgievska
 -- Create date: 12/8/23
 -- Proposition:	what instructors teach the course with the most number of sections?
 -- =============================================*/
 -- 2
-
 GO
 WITH CourseMostSections (CourseName, CourseSectionCounts, DepartmentID)
 AS
@@ -118,22 +109,18 @@ ON C.DepartmentID = D.DepartmentId
 INNER JOIN [Personnel].[Instructor] AS I
 ON D.InstructorId = I.InstructorID
 
-
 /* =============================================
 -- Author:		Sigalita Yakubova
 -- Create date: 12/10/23
 -- Proposition: Show all the courses being taught in a specific department
 -- =============================================*/
 -- 3
-
 GO
 DECLARE  @DeptID INT = 1;
-
 SELECT D.DepartmentID, D.DepartmentName, C.CourseName, C.CourseAbbreviation, C.CourseNumber, C.CourseId
 FROM [Academic].Department AS D 
 INNER JOIN [Academic].Course AS C ON C.DepartmentID = D.DepartmentID
 WHERE D.DepartmentID = @DeptID
-
 
 /* =============================================
 -- Author:		Sigalita Yakubova
@@ -141,7 +128,6 @@ WHERE D.DepartmentID = @DeptID
 -- Proposition: Show all teachers in the Accounting Department whose first name starts with A
 -- =============================================*/
 -- 4
-
 GO
 SELECT D.DepartmentID, D.DepartmentName, I.FirstName, I.LastName
 FROM [Personnel].DepartmentInstructor AS DI
@@ -155,7 +141,6 @@ WHERE D.DepartmentName = 'ACCT' AND I.FirstName LIKE 'A%'
 -- Proposition: Identify instructors who are not assigned to any class
 -- =============================================*/
 -- 5
-
 GO
 SELECT
     I.InstructorID,
@@ -172,14 +157,12 @@ WHERE
 ORDER BY I.LastName
 --Empty because all instructors included in the data are teaching this semester
 
-    
 /* =============================================
 -- Author:		Sigalita Yakubova
 -- Create date: 12/10/23
 -- Proposition: Most Popular Courses: Rank courses based on total enrollment for the semester, showing the most to least popular
 -- =============================================*/
 -- 6
-
 GO
 WITH CourseEnrollment AS (
     SELECT
@@ -209,8 +192,6 @@ SELECT
 FROM
     CourseEnrollment CE;
 
-
-
 /* =============================================
 -- Author:		Ahnaf Ahmed
 -- Create date: 12/10/23
@@ -218,7 +199,6 @@ FROM
 --              Display the course, course name, and total enrollment
 -- =============================================*/
 --7 
-
 GO
 SELECT CONCAT(C.CourseAbbreviation, C.CourseNumber) AS [Course],
         C.CourseName,
@@ -230,15 +210,12 @@ FROM Academic.Course AS C
         ON S.SectionID = E.SectionID
 GROUP BY C.CourseAbbreviation, C.CourseNumber, C.CourseName 
 
-
-
 /* =============================================
 -- Author:		Aryeh Richman
 -- Create date: 12/9/23
 -- Proposition:	Which Instructors teach courses with over 150 students enrolled?
 -- =============================================*/
 -- 8
-
 GO
 SELECT DISTINCT CONCAT(I.FirstName, ' ', I.LastName) AS Professor
 FROM Enrollment.EnrollmentDetail AS E
@@ -252,14 +229,12 @@ FROM Enrollment.EnrollmentDetail AS E
             ON DI.InstructorID = I.InstructorID
 WHERE E.CurrentEnrollment > 150
 
-
 /* =============================================
 -- Author:		Aryeh Richman
 -- Create date: 12/9/23
 -- Proposition:	Which classes have over enrollment and by how many students?
 -- =============================================*/
 -- 9
-
 GO
 SELECT DISTINCT CONCAT(C.CourseAbbreviation, C.CourseNumber) AS Course, 
                 C.CourseName, 
@@ -281,7 +256,6 @@ WHERE E.CurrentEnrollment > E.MaxEnrollmentLimit
                 Include the courses names and credit hours.
 -- =============================================*/
 -- 10
-
 GO
 DECLARE @DepartmentID INT;
 -- Set the value of the specific department
@@ -293,6 +267,3 @@ FROM Academic.Department AS D
     INNER JOIN Academic.Course AS C
         ON D.DepartmentID = C.DepartmentID
 WHERE D.DepartmentID = @DepartmentID
-
-
-
