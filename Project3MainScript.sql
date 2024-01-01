@@ -1,5 +1,5 @@
 --------------------------------------- CREATE THE DATABASE ------------------------------------------
--- Step 1 Instructions: run only lines 9 and 10 using the master database 
+-- Step 1 Instructions: run only lines 5 / 6 and 9 / 10 using the master database 
 
 USE master
 DROP DATABASE [QC_ClassSchedule_Group1]
@@ -390,8 +390,8 @@ GO
 Table: [Facilities].[RoomLocation]
 -- =============================================
 -- Author:		Nicholas Kong
--- Create date: 
--- Description:	
+-- Create date: 12/6/23
+-- Description:	Load the room number into the RoomLocation table
 -- =============================================
 */
 DROP TABLE IF EXISTS [Facilities].[RoomLocation]
@@ -836,10 +836,9 @@ GO
 
 ----------------------------------------------- CREATE VIEWS -------------------------------------------------------
 
+--------------------------------- Create Stored Procedures --------------------------------------------------------
 
---------------------------------- Create Stored Procedures -------------------------------
-
---------------------------------------- WORKFLOW STORED PROCEDURES ----------------------------------------------
+----------------------------------- WORKFLOW STORED PROCEDURES -----------------------------------
 
 /*
 -- Stored Procedure: [Process].[usp_ShowWorkflowSteps]
@@ -994,7 +993,6 @@ BEGIN
     ADD CONSTRAINT FK_Course_DepartmentID
         FOREIGN KEY (DepartmentID)
         REFERENCES [Academic].[Department] (DepartmentID)
-
     -- Aryeh
     ALTER TABLE [Academic].[Department]
     ADD CONSTRAINT FK_Department_UserAuthorization
@@ -1024,7 +1022,6 @@ BEGIN
     ADD CONSTRAINT FK_ClassDays_Days
         FOREIGN KEY (DayID)
         REFERENCES [ClassManagement].[Days] (DayID);
-
     -- Sigi
     ALTER TABLE [Enrollment].[Semester]
     ADD CONSTRAINT FK_Semester_UserAuthorization
@@ -1038,7 +1035,6 @@ BEGIN
     ADD CONSTRAINT FK_Section_Course
         FOREIGN KEY (CourseID)
         REFERENCES [Academic].[Course] (CourseID)
-
     -- Ahnaf 
     ALTER TABLE [ClassManagement].[Days]
     ADD CONSTRAINT FK_Days_UserAuthorization
@@ -1052,7 +1048,6 @@ BEGIN
     ADD CONSTRAINT FK_EnrollmentDetail_Section
         FOREIGN KEY (SectionID)
         REFERENCES [Academic].[Section] ([SectionID]);
-
     -- Nicholas
     ALTER TABLE [ClassManagement].[ModeOfInstruction]  
     ADD CONSTRAINT FK_ModeOfInst_UserAuthorization
@@ -1074,7 +1069,6 @@ BEGIN
     ADD CONSTRAINT FK_Class_Semester
 		FOREIGN KEY (SemesterID)
 		REFERENCES [Enrollment].[Semester] (SemesterID);
-
     -- Edwin
     ALTER TABLE [Facilities].[BuildingLocations]
     ADD CONSTRAINT FK_BuildingLocations_UserAuthorization
@@ -1141,24 +1135,20 @@ BEGIN
     ALTER TABLE [Personnel].[Instructor] DROP CONSTRAINT [FK_Instructor_UserAuthorization];
     ALTER TABLE [Academic].[Course] DROP CONSTRAINT [FK_Course_UserAuthorization];
     ALTER TABLE [Academic].[Course] DROP CONSTRAINT [FK_Course_DepartmentID];
-
     -- Ahnaf
     ALTER TABLE [ClassManagement].[Days] DROP CONSTRAINT [FK_Days_UserAuthorization];
     ALTER TABLE [Enrollment].[EnrollmentDetails] DROP CONSTRAINT [FK_EnrollmentDetail_UserAuthorization];
     ALTER TABLE [Enrollment].[EnrollmentDetails] DROP CONSTRAINT [FK_EnrollmentDetail_Section];
-
     -- Nicholas
     ALTER TABLE [ClassManagement].[ModeOfInstruction] DROP CONSTRAINT [FK_ModeOfInst_UserAuthorization];
     ALTER TABLE [Facilities].[RoomLocation] DROP CONSTRAINT [FK_RoomLocation_UserAuthorization];
     ALTER TABLE [Facilities].[RoomLocation] DROP CONSTRAINT [FK_RoomLocation_BuildingLocations];
     ALTER TABLE [ClassManagement].[ClassSchedule] DROP CONSTRAINT [FK_Class_UserAuthorization];
     ALTER TABLE [ClassManagement].[ClassSchedule]  DROP CONSTRAINT [FK_Class_Semester];
-
     -- Sigi
     ALTER TABLE [Enrollment].[Semester] DROP CONSTRAINT FK_Semester_UserAuthorization;
     ALTER TABLE [Academic].[Section] DROP CONSTRAINT [FK_Section_UserAuthorization];
     ALTER TABLE [Academic].[Section] DROP CONSTRAINT [FK_Section_Course];
-
     -- Aryeh
     ALTER TABLE [Academic].[Department] DROP CONSTRAINT FK_Department_UserAuthorization;
     ALTER TABLE [Personnel].[DepartmentInstructor] DROP CONSTRAINT FK_DepartmentInstructor_UserAuthorization;
@@ -1167,7 +1157,6 @@ BEGIN
     ALTER TABLE [ClassManagement].[ClassDays] DROP CONSTRAINT FK_ClassDays_UserAuthorization;
     ALTER TABLE [ClassManagement].[ClassDays] DROP CONSTRAINT FK_ClassDays_Class;
     ALTER TABLE [ClassManagement].[ClassDays] DROP CONSTRAINT FK_ClassDays_Days;
-
     -- Edwin
     ALTER TABLE [Facilities].[BuildingLocations] DROP CONSTRAINT FK_BuildingLocations_UserAuthorization;
     ALTER TABLE [ClassManagement].[ClassSchedule] DROP CONSTRAINT FK_Class_Section;
@@ -1220,24 +1209,19 @@ BEGIN
     TRUNCATE TABLE [Process].[WorkFlowSteps]
     TRUNCATE TABLE [Personnel].[Instructor]
     TRUNCATE TABLE [Academic].[Course]
-
     -- Aryeh
     TRUNCATE TABLE [Academic].[Department]
     TRUNCATE TABLE [Personnel].[DepartmentInstructor]
     TRUNCATE TABLE [ClassManagement].[ClassDays]
-
 	-- Nicholas
 	TRUNCATE TABLE [ClassManagement].[ModeOfInstruction]
 	TRUNCATE TABLE [Facilities].[RoomLocation]
-
     -- Ahnaf
     TRUNCATE TABLE [ClassManagement].[Days]
 	TRUNCATE TABLE [Enrollment].[EnrollmentDetails]
-
     -- Sigi
     TRUNCATE TABLE [Enrollment].[Semester]
     TRUNCATE TABLE [Academic].[Section]
-
     -- Edwin
     TRUNCATE TABLE [Facilities].[BuildingLocations]
     TRUNCATE TABLE [ClassManagement].[ClassSchedule]
@@ -1306,7 +1290,6 @@ BEGIN
             TableName = '[Academic].[Course]',
             [Row Count] = COUNT(*)
         FROM [Academic].[Course]
-
     -- Ahnaf
     UNION ALL
         SELECT TableStatus = @TableStatus,
@@ -1318,8 +1301,7 @@ BEGIN
             TableName = '[Enrollment].[EnrollmentDetails]',
             [Row Count] = COUNT(*)
         FROM [Enrollment].[EnrollmentDetails]
-
-    -- Nicholas 
+    -- Nicholas
     UNION ALL
         SELECT TableStatus = @TableStatus,
             TableName = '[ClassManagement].[ModeOfInstruction]',
@@ -1330,7 +1312,6 @@ BEGIN
             TableName = '[Facilities].[RoomLocation]',
             [Row Count] = COUNT(*)
         FROM [Facilities].[RoomLocation]
-
     -- Sigi
     UNION ALL
         SELECT TableStatus = @TableStatus,
@@ -1342,7 +1323,6 @@ BEGIN
             TableName = '[Academic].[Section]',
             [Row Count] = COUNT(*)
         FROM [Academic].[Section]
-
     -- Aryeh
     UNION ALL
         SELECT TableStatus = @TableStatus,
@@ -1359,7 +1339,6 @@ BEGIN
             TableName = '[ClassManagement].[ClassDays]',
             [Row Count] = COUNT(*)
         FROM [ClassManagement].[ClassDays]
-
     -- Edwin
     UNION ALL
         SELECT TableStatus = @TableStatus,
@@ -1385,7 +1364,7 @@ BEGIN
 END;
 GO
 
---------------------------------------- LOAD DATA STORED PROCEDURES ----------------------------------------------
+----------------------------------- LOAD DATA STORED PROCEDURES -----------------------------------
 
 /*
 Stored Procedure: [Project3].[LoadInstructors]
@@ -2085,7 +2064,7 @@ GO
 
 -- add more stored procedures here... 
 
---------------------------------------- DB CONTROLLER STORED PROCEDURES ----------------------------------------------
+------------------------------------ DB CONTROLLER STORED PROCEDURES ------------------------------------
 
 /*
 -- =============================================
@@ -2187,6 +2166,8 @@ BEGIN
 END;
 GO
 
+--------------------------------------- Run the stored procedures ------------------------------------------
+-- Step 3 Instructions: Start with [Project3].[LoadClassScheduleDatabase] and then all 3 in order
 EXEC [Project3].[TruncateClassScheduleDatabase] @UserAuthorizationKey = 1;
 EXEC [Project3].[LoadClassScheduleDatabase] @UserAuthorizationKey = 1;
 EXEC [Project3].[AddForeignKeysToClassSchedule] @UserAuthorizationKey = 1;
