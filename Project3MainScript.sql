@@ -122,7 +122,7 @@ CREATE TABLE [DbSecurity].[UserAuthorization]
     [DateAdded] [datetime2] NOT NULL,
     [DateOfLastUpdate] [datetime2] NOT NULL,
     --
-    [ClassTime] CHAR(4) NULL,
+    [ClassTime] CHAR(5) NULL,
     [IndividualProject] CHAR(9) NULL,
     [GroupName] CHAR(7) NOT NULL,
     [GroupMemberLastName] VARCHAR(15) NOT NULL,
@@ -132,8 +132,8 @@ CREATE TABLE [DbSecurity].[UserAuthorization]
 ) ON [PRIMARY]
 GO
 
+-- Process.[WorkflowSteps] Table --
 /*
-Table: Process.[WorkflowSteps]
 Description:
 This table is used for auditing and tracking the execution of various workflow steps within the system. 
 It records key information about each workflow step, including a description, the number of rows affected, 
@@ -744,7 +744,7 @@ GO
 ALTER TABLE [ClassManagement].[ClassDays] CHECK CONSTRAINT [FK_ClassDays_UserAuthorization]
 GO
 ALTER TABLE [ClassManagement].[ClassDays]  WITH CHECK ADD  CONSTRAINT [FK_ClassDays_Class] FOREIGN KEY([ClassID])
-REFERENCES [ClassManagement].[Class] ([ClassID])
+REFERENCES [ClassManagement].[ClassSchedule] ([ClassID])
 GO
 ALTER TABLE [ClassManagement].[ClassDays] CHECK CONSTRAINT [FK_ClassDays_Class]
 GO
@@ -1009,21 +1009,21 @@ BEGIN
         FOREIGN KEY (DepartmentID)
         REFERENCES [Academic].[Department] (DepartmentID);
     ALTER TABLE [Personnel].[DepartmentInstructor]
-    ADD CONSTRAINT FK_Department_Instructor
+    ADD CONSTRAINT FK_DepartmentInstructor_Instructor
         FOREIGN KEY (InstructorID)
         REFERENCES [Personnel].[Instructor] (InstructorID);
-    -- ALTER TABLE [ClassManagement].[ClassDays]
-    -- ADD CONSTRAINT FK_ClassDays_UserAuthorization
-    --     FOREIGN KEY (UserAuthorizationKey)
-    --     REFERENCES [DbSecurity].[UserAuthorization] (UserAuthorizationKey);
-    -- ALTER TABLE [ClassManagement].[ClassDays]
-    -- ADD CONSTRAINT FK_ClassDays_Class
-    --     FOREIGN KEY (ClassID)
-    --     REFERENCES [ClassManagement].[Class] (ClassID);
-    -- ALTER TABLE [ClassManagement].[ClassDays]
-    -- ADD CONSTRAINT FK_ClassDays_Days
-    --     FOREIGN KEY (DayID)
-    --     REFERENCES [ClassManagement].[Days] (DayID);
+    ALTER TABLE [ClassManagement].[ClassDays]
+    ADD CONSTRAINT FK_ClassDays_UserAuthorization
+        FOREIGN KEY (UserAuthorizationKey)
+        REFERENCES [DbSecurity].[UserAuthorization] (UserAuthorizationKey);
+    ALTER TABLE [ClassManagement].[ClassDays]
+    ADD CONSTRAINT FK_ClassDays_Class
+        FOREIGN KEY (ClassID)
+        REFERENCES [ClassManagement].[ClassSchedule] (ClassID);
+    ALTER TABLE [ClassManagement].[ClassDays]
+    ADD CONSTRAINT FK_ClassDays_Days
+        FOREIGN KEY (DayID)
+        REFERENCES [ClassManagement].[Days] (DayID);
 
     -- Sigi
     ALTER TABLE [Enrollment].[Semester]
@@ -1164,9 +1164,9 @@ BEGIN
     ALTER TABLE [Personnel].[DepartmentInstructor] DROP CONSTRAINT FK_DepartmentInstructor_UserAuthorization;
     ALTER TABLE [Personnel].[DepartmentInstructor] DROP CONSTRAINT FK_DepartmentInstructor_Department;
     ALTER TABLE [Personnel].[DepartmentInstructor] DROP CONSTRAINT FK_DepartmentInstructor_Instructor;
-    -- ALTER TABLE [ClassManagement].[ClassDays] DROP CONSTRAINT FK_ClassDays_UserAuthorization;
-    -- ALTER TABLE [ClassManagement].[ClassDays] DROP CONSTRAINT FK_ClassDays_Class;
-    -- ALTER TABLE [ClassManagement].[ClassDays] DROP CONSTRAINT FK_ClassDays_Days;
+    ALTER TABLE [ClassManagement].[ClassDays] DROP CONSTRAINT FK_ClassDays_UserAuthorization;
+    ALTER TABLE [ClassManagement].[ClassDays] DROP CONSTRAINT FK_ClassDays_Class;
+    ALTER TABLE [ClassManagement].[ClassDays] DROP CONSTRAINT FK_ClassDays_Days;
 
     -- Edwin
     ALTER TABLE [Facilities].[BuildingLocations] DROP CONSTRAINT FK_BuildingLocations_UserAuthorization;
@@ -1224,7 +1224,7 @@ BEGIN
     -- Aryeh
     TRUNCATE TABLE [Academic].[Department]
     TRUNCATE TABLE [Personnel].[DepartmentInstructor]
-    -- TRUNCATE TABLE [ClassManagement].[ClassDays]
+    TRUNCATE TABLE [ClassManagement].[ClassDays]
 
 	-- Nicholas
 	TRUNCATE TABLE [ClassManagement].[ModeOfInstruction]
@@ -1354,11 +1354,11 @@ BEGIN
             TableName = '[Personnel].[DepartmentInstructor]',
             [Row Count] = COUNT(*)
         FROM [Personnel].[DepartmentInstructor]
-    -- UNION ALL
-    --     SELECT TableStatus = @TableStatus,
-    --         TableName = '[ClassManagement].[ClassDays]',
-    --         [Row Count] = COUNT(*)
-    --     FROM [ClassManagement].[ClassDays]
+    UNION ALL
+        SELECT TableStatus = @TableStatus,
+            TableName = '[ClassManagement].[ClassDays]',
+            [Row Count] = COUNT(*)
+        FROM [ClassManagement].[ClassDays]
 
     -- Edwin
     UNION ALL
@@ -1435,72 +1435,6 @@ END;
 GO
 
 /*
-Stored Procedure: [Project3].[LoadCourse]
--- =============================================
--- Author:		Aleksandra Georgievska
--- Create date: 12/4/23
--- Description:	Adds the Courses to the Course Table
--- =============================================
-*/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE OR ALTER PROCEDURE [Project3].[LoadCourse] @UserAuthorizationKey INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
-
-    INSERT INTO [Academic].[Course](
-        [DepartmentID], -- fk
-        [CourseNumber], -- Course (parse number)
-        [CourseName], -- Description 
-        [CourseCredit], -- Course (parse second number in (,))
-        [CreditHours], -- Course (parse first number in (,))
-        UserAuthorizationKey
-    )
-    SELECT DISTINCT
-        ( SELECT TOP 1 D.DepartmentID
-          FROM [Academic].[Department] AS D
-          WHERE D.DepartmentName = LEFT([Course (hr, crd)], PATINDEX('%[ (]%', [Course (hr, crd)]) - 1)) -- DepartmentID
-        ,SUBSTRING(
-                [Course (hr, crd)], 
-                PATINDEX('%[0-9]%', [Course (hr, crd)]), 
-                CHARINDEX('(', [Course (hr, crd)]) - PATINDEX('%[0-9]%', [Course (hr, crd)])
-            ) -- CourseNumber
-        ,C.Description -- CourseName
-        ,CAST(SUBSTRING(
-                [Course (hr, crd)], 
-                CHARINDEX(',', [Course (hr, crd)]) + 2, 
-                CHARINDEX(')', [Course (hr, crd)]) - CHARINDEX(',', [Course (hr, crd)]) - 2 
-                ) AS FLOAT) --CourseCredit
-        ,CAST(SUBSTRING(
-                [Course (hr, crd)], 
-                CHARINDEX('(', [Course (hr, crd)]) + 1, 
-                CHARINDEX(',', [Course (hr, crd)]) - CHARINDEX('(', [Course (hr, crd)]) - 1
-                ) AS FLOAT) -- CreditHours 
-        ,@UserAuthorizationKey
-    FROM
-    [Uploadfile].[CurrentSemesterCourseOfferings] AS C;
-
-    DECLARE @WorkFlowStepTableRowCount INT;
-    SET @WorkFlowStepTableRowCount = (
-                                    SELECT COUNT(*) 
-                                    FROM [Academic].[Course]
-                                    );
-    DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
-    DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
-    EXEC [Process].[usp_TrackWorkFlow] 'Add Course Data',
-                                       @WorkFlowStepTableRowCount,
-                                       @StartingDateTime,
-                                       @EndingDateTime,
-                                       @QueryTime,
-                                       @UserAuthorizationKey;
-END;
-GO
-
-/*
 Stored Procedure: [Project3].[LoadSemesters]
 -- =============================================
 -- Author:		Sigalita Yakubova
@@ -1534,61 +1468,6 @@ BEGIN
     DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
     DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
     EXEC [Process].[usp_TrackWorkFlow] 'Add Semester Data',
-                                       @WorkFlowStepTableRowCount,
-                                       @StartingDateTime,
-                                       @EndingDateTime,
-                                       @QueryTime,
-                                       @UserAuthorizationKey;
-END;
-GO
-
-/*
-Stored Procedure: [Project3].[LoadSections]
--- =============================================
--- Author:		Sigalita Yakubova
--- Create date: 12/4/23
--- Description:	Loads in the Section Table
--- =============================================
-*/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE OR ALTER PROCEDURE [Project3].[LoadSections] @UserAuthorizationKey INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
-
-    INSERT INTO [Academic].[Section] (SectionNumber, SectionCode, CourseID, UserAuthorizationKey)
-    SELECT DISTINCT
-        Upload.Sec,
-        Upload.Code,
-        (
-            SELECT TOP 1 C.CourseId
-            FROM [Academic].[Course] AS C
-                INNER JOIN [Academic].[Department] AS D
-                    ON C.DepartmentID = D.DepartmentID
-            WHERE 
-                D.DepartmentName = LEFT(Upload.[Course (hr, crd)], PATINDEX('%[ (]%', Upload.[Course (hr, crd)]) - 1) AND 
-                C.CourseNumber = SUBSTRING(
-                    Upload.[Course (hr, crd)], 
-                    PATINDEX('%[0-9]%', Upload.[Course (hr, crd)]), 
-                    CHARINDEX('(', Upload.[Course (hr, crd)]) - PATINDEX('%[0-9]%', Upload.[Course (hr, crd)])
-                )
-        ) AS CourseID,
-        @UserAuthorizationKey
-    FROM
-        [Uploadfile].[CurrentSemesterCourseOfferings] AS Upload;
-
-    DECLARE @WorkFlowStepTableRowCount INT;
-    SET @WorkFlowStepTableRowCount = (
-                                    SELECT COUNT(*) 
-                                    FROM [Academic].[Section]
-                                    );
-    DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
-    DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
-    EXEC [Process].[usp_TrackWorkFlow] 'Add Section Data',
                                        @WorkFlowStepTableRowCount,
                                        @StartingDateTime,
                                        @EndingDateTime,
@@ -1641,61 +1520,6 @@ END;
 GO
 
 /*
-Stored Procedure: [Project3].[LoadEnrollmentDetails]
--- =============================================
--- Author:		Ahnaf Ahmed
--- Create date: 12/8/23
--- Description:	Loads in the EnrollmentDetails Table
--- =============================================
-*/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE OR ALTER PROCEDURE [Project3].[LoadEnrollmentDetails] @UserAuthorizationKey INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
-
-    INSERT INTO [Enrollment].[EnrollmentDetails]
-	(SectionID,
-		CurrentEnrollment,
-		MaxEnrollmentLimit,
-		OverEnrolled,
-		UserAuthorizationKey
-	)
-    SELECT DISTINCT
-        S.SectionID,
-		CAST(Upload.Enrolled AS INT),
-		CAST(Upload.Limit AS INT),
-		CASE
-			WHEN CAST(Upload.Enrolled AS INT) <= CAST(Upload.Limit AS INT) THEN 'No'
-			ELSE 'Yes'
-		END,
-        @UserAuthorizationKey
-    FROM
-        [Uploadfile].[CurrentSemesterCourseOfferings] AS Upload
-		INNER JOIN [Academic].[Section] AS S
-		ON Upload.Code = S.SectionCode
-
-    DECLARE @WorkFlowStepTableRowCount INT;
-    SET @WorkFlowStepTableRowCount = (
-                                    SELECT COUNT(*) 
-                                    FROM [Enrollment].[EnrollmentDetails]
-                                    );
-    DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
-    DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
-    EXEC [Process].[usp_TrackWorkFlow] 'Procedure: [Project3].[LoadEnrollmentDetails] loads [EnrollmentDetails] table',
-                                       @WorkFlowStepTableRowCount,
-                                       @StartingDateTime,
-                                       @EndingDateTime,
-                                       @QueryTime,
-                                       @UserAuthorizationKey;
-END;
-GO
-
-/*
 Stored Procedure: [Project3].[LoadModeOfInstruction]
 -- =============================================
 -- Author:		Nicholas Kong
@@ -1725,145 +1549,6 @@ BEGIN
 	DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
 	DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
     EXEC [Process].[usp_TrackWorkFlow] 'Procedure: Project3[LoadModeOfInstruction] loads data into ShowTableStatusRowCount',
-                                       @WorkFlowStepTableRowCount,
-                                       @StartingDateTime,
-                                       @EndingDateTime,
-                                       @QueryTime,
-                                       @UserAuthorizationKey;
-END;
-GO
-
-/*
-Stored Procedure: [Project3].[LoadRoomLocation]
--- =============================================
--- Author:		Nicholas Kong
--- Create date: 12/6/23
--- Description:	Populate a table to show the room location
--- =============================================
-*/
-CREATE OR ALTER PROCEDURE [Project3].[LoadRoomLocation]
-    @UserAuthorizationKey INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
-
-	INSERT INTO [Facilities].[RoomLocation](BuildingID, RoomNumber, UserAuthorizationKey)
-    SELECT
-        ( SELECT TOP 1 B.BuildingID
-          FROM [Facilities].[BuildingLocations] AS B
-          WHERE B.BuildingAbbrv = LEFT(Q.Location, CHARINDEX(' ', Q.Location) - 1)) AS BuildingID, -- BuildingID
-        CASE
-		    -- add the edge cases and then manually set it correctly
-            WHEN RIGHT(Q.Location, 4) = 'H 17' THEN '17'
-            WHEN RIGHT(Q.Location, 4) = '135H' THEN 'A135H'
-		    WHEN RIGHT(Q.Location, 4) = '135B' THEN 'A135B'
-            WHEN RIGHT(Q.Location, 4) = 'H 08' THEN '08'
-		    WHEN RIGHT(Q.Location, 4) = 'H 09' THEN '09'
-		    WHEN RIGHT(Q.Location, 4) = 'H 12' THEN '12'
-            WHEN RIGHT(Q.Location, 4) = 'H 17' THEN '17'
-            WHEN RIGHT(Q.Location, 4) = 'A 11' THEN '11'
-		    -- checks for null and empty string, if so set default string named TBD
-            WHEN Q.Location IS NULL OR LTRIM(RTRIM(Q.Location)) = '' THEN 'TBD'
-            ELSE LTRIM(RTRIM(RIGHT(Q.Location, 4)))
-        END AS RoomNumber, @UserAuthorizationKey
-    FROM [Uploadfile].[CurrentSemesterCourseOfferings] as Q
-    WHERE CHARINDEX(' ', Location) > 0
-    GROUP BY Q.[Location]
-
-    DECLARE @WorkFlowStepTableRowCount INT;
-    SET @WorkFlowStepTableRowCount = (
-                                    SELECT COUNT(*) 
-                                    FROM [Facilities].[RoomLocation]
-                                    );
-	DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
-	DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
-    EXEC [Process].[usp_TrackWorkFlow] 'Procedure: Project3[LoadRoomLocation] loads data into ShowTableStatusRowCount',
-                                       @WorkFlowStepTableRowCount,
-                                       @StartingDateTime,
-                                       @EndingDateTime,
-                                       @QueryTime,
-                                       @UserAuthorizationKey;
-END;
-GO
-
-/*
-Stored Procedure: [Project3].[LoadClassSchedule]
--- =============================================
--- Author:		Nicholas Kong & Edwin Wray
--- Create date: 12/5/23
--- Description:	Adds Classes to the ClassSchedule Table
--- =============================================
-*/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE OR ALTER PROCEDURE [Project3].[LoadClassSchedule] @UserAuthorizationKey INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
-
-    INSERT INTO [ClassManagement].[ClassSchedule] (
-        SemesterID, SectionID, InstructorID, RoomID, ModeID, StartTime, EndTime, UserAuthorizationKey
-    ) 
-    SELECT DISTINCT
-        -- SemesterID
-        ( SELECT S.SemesterID
-            FROM [Enrollment].[Semester] AS S
-            WHERE S.SemesterName = 'Fall 2023'
-        ),
-        -- SectionID
-        ( SELECT TOP 1 S.SectionID
-            FROM [Academic].[Section] AS S
-            WHERE S.SectionCode = U.Code -- Section Code
-                AND S.SectionNumber = U.Sec -- Section Number
-        ),
-        -- InstructorID
-        ( SELECT TOP 1 I.InstructorID
-            FROM [Personnel].[Instructor] AS I
-            WHERE I.FirstName = COALESCE(NULLIF(LTRIM(RTRIM(SUBSTRING(U.Instructor, CHARINDEX(',', U.Instructor) + 2, LEN(U.Instructor)))), ''), 'none') -- FirstName
-                AND I.LastName = COALESCE(NULLIF(LTRIM(RTRIM(SUBSTRING(U.Instructor, 1, CHARINDEX(',', U.Instructor) - 1))), ''), 'none') -- LastName
-        ),
-        -- RoomID
-        ( SELECT TOP 1 R.RoomID
-            FROM [Facilities].[RoomLocation] AS R
-            WHERE R.RoomNumber = CASE
-                                    -- add the edge cases and then manually set it correctly
-                                    WHEN RIGHT(U.Location, 4) = 'H 17' THEN '17'
-                                    WHEN RIGHT(U.Location, 4) = '135H' THEN 'A135H'
-                                    WHEN RIGHT(U.Location, 4) = '135B' THEN 'A135B'
-                                    WHEN RIGHT(U.Location, 4) = 'H 08' THEN '08'
-                                    WHEN RIGHT(U.Location, 4) = 'H 09' THEN '09'
-                                    WHEN RIGHT(U.Location, 4) = 'H 12' THEN '12'
-                                    WHEN RIGHT(U.Location, 4) = 'H 17' THEN '17'
-                                    WHEN RIGHT(U.Location, 4) = 'A 11' THEN '11'
-                                    -- checks for null and empty string, if so set default string named TBD
-                                    WHEN U.Location IS NULL OR LTRIM(RTRIM(U.Location)) = '' THEN 'TBD'
-                                    ELSE LTRIM(RTRIM(RIGHT(U.Location, 4)))
-                                END
-        ),
-        -- ModeID
-        ( SELECT TOP 1 M.ModeID
-            FROM [ClassManagement].[ModeOfInstruction] AS M
-            WHERE M.ModeName = U.[Mode of Instruction]
-        ),
-        -- StartTime
-		CONVERT(TIME, NULLIF(LEFT(U.Time, CHARINDEX('-', U.Time) - 1), 'TBD'), 108), 
-		--EndTime
-		CONVERT(TIME, NULLIF(RIGHT(U.Time, LEN(U.Time) - CHARINDEX('-', U.Time)), 'TBD'), 108),
-        @UserAuthorizationKey
-    FROM [Uploadfile].[CurrentSemesterCourseOfferings] AS U
-
-    DECLARE @WorkFlowStepTableRowCount INT;
-    SET @WorkFlowStepTableRowCount = (
-                                    SELECT COUNT(*) 
-                                    FROM [ClassManagement].[ClassSchedule]
-                                    );
-    DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
-    DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
-    EXEC [Process].[usp_TrackWorkFlow] 'Add Class Data',
                                        @WorkFlowStepTableRowCount,
                                        @StartingDateTime,
                                        @EndingDateTime,
@@ -1961,53 +1646,6 @@ END;
 GO
 
 /*
-Stored Procedure: [Project3].[LoadClassDays]
--- =============================================
--- Author:		Aryeh Richman
--- Create date: 12/10/23
--- Description:	Adds the values to the Class / Day bridge table
--- =============================================
-*/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE OR ALTER PROCEDURE [Project3].[LoadClassDays] @UserAuthorizationKey INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
-
-    INSERT INTO [ClassManagement].[ClassDays] (
-        ClassID, DayID, UserAuthorizationKey
-    )
-    SELECT DISTINCT C.ClassID, D.DayID, @UserAuthorizationKey
-    FROM ClassManagement.ClassSchedule AS C
-        CROSS JOIN ClassManagement.[Days] AS D
-        INNER JOIN Academic.Section AS S 
-            ON S.SectionID = C.SectionID
-        INNER JOIN Uploadfile.CurrentSemesterCourseOfferings AS U
-            ON U.Code = S.SectionCode
-        CROSS APPLY dbo.SplitString(U.Day, ',') AS SS
-        WHERE D.DayAbbreviation = LTRIM(RTRIM(SS.Value))
-
-    DECLARE @WorkFlowStepTableRowCount INT;
-    SET @WorkFlowStepTableRowCount = (
-                                    SELECT COUNT(*) 
-                                    FROM [ClassManagement].[ClassDays]
-                                    );
-    DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
-    DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
-    EXEC [Process].[usp_TrackWorkFlow] 'Add ClassDays Data',
-                                       @WorkFlowStepTableRowCount,
-                                       @StartingDateTime,
-                                       @EndingDateTime,
-                                       @QueryTime,
-                                       @UserAuthorizationKey;
-END;
-GO
-
-/*
 Stored Procedure: [Project3].[LoadBuildingLocations]
 -- =============================================
 -- Author:		Edwin Wray
@@ -2075,6 +1713,368 @@ BEGIN
     DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
     DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
     EXEC [Process].[usp_TrackWorkFlow] 'Add BuildingLocations Data',
+                                       @WorkFlowStepTableRowCount,
+                                       @StartingDateTime,
+                                       @EndingDateTime,
+                                       @QueryTime,
+                                       @UserAuthorizationKey;
+END;
+GO
+
+/*
+Stored Procedure: [Project3].[LoadCourse]
+-- =============================================
+-- Author:		Aleksandra Georgievska
+-- Create date: 12/4/23
+-- Description:	Adds the Courses to the Course Table
+-- =============================================
+*/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [Project3].[LoadCourse] @UserAuthorizationKey INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
+
+    INSERT INTO [Academic].[Course](
+        [DepartmentID], -- fk
+        [CourseNumber], -- Course (parse number)
+        [CourseName], -- Description 
+        [CourseCredit], -- Course (parse second number in (,))
+        [CreditHours], -- Course (parse first number in (,))
+        UserAuthorizationKey
+    )
+    SELECT DISTINCT
+        ( SELECT TOP 1 D.DepartmentID
+          FROM [Academic].[Department] AS D
+          WHERE D.DepartmentName = LEFT([Course (hr, crd)], PATINDEX('%[ (]%', [Course (hr, crd)]) - 1)) -- DepartmentID
+        ,SUBSTRING(
+                [Course (hr, crd)], 
+                PATINDEX('%[0-9]%', [Course (hr, crd)]), 
+                CHARINDEX('(', [Course (hr, crd)]) - PATINDEX('%[0-9]%', [Course (hr, crd)])
+            ) -- CourseNumber
+        ,C.Description -- CourseName
+        ,CAST(SUBSTRING(
+                [Course (hr, crd)], 
+                CHARINDEX(',', [Course (hr, crd)]) + 2, 
+                CHARINDEX(')', [Course (hr, crd)]) - CHARINDEX(',', [Course (hr, crd)]) - 2 
+                ) AS FLOAT) --CourseCredit
+        ,CAST(SUBSTRING(
+                [Course (hr, crd)], 
+                CHARINDEX('(', [Course (hr, crd)]) + 1, 
+                CHARINDEX(',', [Course (hr, crd)]) - CHARINDEX('(', [Course (hr, crd)]) - 1
+                ) AS FLOAT) -- CreditHours 
+        ,@UserAuthorizationKey
+    FROM
+    [Uploadfile].[CurrentSemesterCourseOfferings] AS C;
+
+    DECLARE @WorkFlowStepTableRowCount INT;
+    SET @WorkFlowStepTableRowCount = (
+                                    SELECT COUNT(*) 
+                                    FROM [Academic].[Course]
+                                    );
+    DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
+    DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
+    EXEC [Process].[usp_TrackWorkFlow] 'Add Course Data',
+                                       @WorkFlowStepTableRowCount,
+                                       @StartingDateTime,
+                                       @EndingDateTime,
+                                       @QueryTime,
+                                       @UserAuthorizationKey;
+END;
+GO
+
+/*
+Stored Procedure: [Project3].[LoadRoomLocation]
+-- =============================================
+-- Author:		Nicholas Kong
+-- Create date: 12/6/23
+-- Description:	Populate a table to show the room location
+-- =============================================
+*/
+CREATE OR ALTER PROCEDURE [Project3].[LoadRoomLocation]
+    @UserAuthorizationKey INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
+
+	INSERT INTO [Facilities].[RoomLocation](BuildingID, RoomNumber, UserAuthorizationKey)
+    SELECT
+        ( SELECT TOP 1 B.BuildingID
+          FROM [Facilities].[BuildingLocations] AS B
+          WHERE B.BuildingAbbrv = LEFT(Q.Location, CHARINDEX(' ', Q.Location) - 1)) AS BuildingID, -- BuildingID
+        CASE
+		    -- add the edge cases and then manually set it correctly
+            WHEN RIGHT(Q.Location, 4) = 'H 17' THEN '17'
+            WHEN RIGHT(Q.Location, 4) = '135H' THEN 'A135H'
+		    WHEN RIGHT(Q.Location, 4) = '135B' THEN 'A135B'
+            WHEN RIGHT(Q.Location, 4) = 'H 08' THEN '08'
+		    WHEN RIGHT(Q.Location, 4) = 'H 09' THEN '09'
+		    WHEN RIGHT(Q.Location, 4) = 'H 12' THEN '12'
+            WHEN RIGHT(Q.Location, 4) = 'H 17' THEN '17'
+            WHEN RIGHT(Q.Location, 4) = 'A 11' THEN '11'
+		    -- checks for null and empty string, if so set default string named TBD
+            WHEN Q.Location IS NULL OR LTRIM(RTRIM(Q.Location)) = '' THEN 'TBD'
+            ELSE LTRIM(RTRIM(RIGHT(Q.Location, 4)))
+        END AS RoomNumber, @UserAuthorizationKey
+    FROM [Uploadfile].[CurrentSemesterCourseOfferings] as Q
+    WHERE CHARINDEX(' ', Location) > 0
+    GROUP BY Q.[Location]
+
+    DECLARE @WorkFlowStepTableRowCount INT;
+    SET @WorkFlowStepTableRowCount = (
+                                    SELECT COUNT(*) 
+                                    FROM [Facilities].[RoomLocation]
+                                    );
+	DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
+	DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
+    EXEC [Process].[usp_TrackWorkFlow] 'Procedure: Project3[LoadRoomLocation] loads data into ShowTableStatusRowCount',
+                                       @WorkFlowStepTableRowCount,
+                                       @StartingDateTime,
+                                       @EndingDateTime,
+                                       @QueryTime,
+                                       @UserAuthorizationKey;
+END;
+GO
+
+/*
+Stored Procedure: [Project3].[LoadSections]
+-- =============================================
+-- Author:		Sigalita Yakubova
+-- Create date: 12/4/23
+-- Description:	Loads in the Section Table
+-- =============================================
+*/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [Project3].[LoadSections] @UserAuthorizationKey INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
+
+    INSERT INTO [Academic].[Section] (SectionNumber, SectionCode, CourseID, UserAuthorizationKey)
+    SELECT DISTINCT
+        Upload.Sec,
+        Upload.Code,
+        (
+            SELECT TOP 1 C.CourseId
+            FROM [Academic].[Course] AS C
+                INNER JOIN [Academic].[Department] AS D
+                    ON C.DepartmentID = D.DepartmentID
+            WHERE 
+                D.DepartmentName = LEFT(Upload.[Course (hr, crd)], PATINDEX('%[ (]%', Upload.[Course (hr, crd)]) - 1) AND 
+                C.CourseNumber = SUBSTRING(
+                    Upload.[Course (hr, crd)], 
+                    PATINDEX('%[0-9]%', Upload.[Course (hr, crd)]), 
+                    CHARINDEX('(', Upload.[Course (hr, crd)]) - PATINDEX('%[0-9]%', Upload.[Course (hr, crd)])
+                )
+        ) AS CourseID,
+        @UserAuthorizationKey
+    FROM
+        [Uploadfile].[CurrentSemesterCourseOfferings] AS Upload;
+
+    DECLARE @WorkFlowStepTableRowCount INT;
+    SET @WorkFlowStepTableRowCount = (
+                                    SELECT COUNT(*) 
+                                    FROM [Academic].[Section]
+                                    );
+    DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
+    DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
+    EXEC [Process].[usp_TrackWorkFlow] 'Add Section Data',
+                                       @WorkFlowStepTableRowCount,
+                                       @StartingDateTime,
+                                       @EndingDateTime,
+                                       @QueryTime,
+                                       @UserAuthorizationKey;
+END;
+GO
+
+/*
+Stored Procedure: [Project3].[LoadEnrollmentDetails]
+-- =============================================
+-- Author:		Ahnaf Ahmed
+-- Create date: 12/8/23
+-- Description:	Loads in the EnrollmentDetails Table
+-- =============================================
+*/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [Project3].[LoadEnrollmentDetails] @UserAuthorizationKey INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
+
+    INSERT INTO [Enrollment].[EnrollmentDetails]
+	(SectionID,
+		CurrentEnrollment,
+		MaxEnrollmentLimit,
+		OverEnrolled,
+		UserAuthorizationKey
+	)
+    SELECT DISTINCT
+        S.SectionID,
+		CAST(Upload.Enrolled AS INT),
+		CAST(Upload.Limit AS INT),
+		CASE
+			WHEN CAST(Upload.Enrolled AS INT) <= CAST(Upload.Limit AS INT) THEN 'No'
+			ELSE 'Yes'
+		END,
+        @UserAuthorizationKey
+    FROM
+        [Uploadfile].[CurrentSemesterCourseOfferings] AS Upload
+		INNER JOIN [Academic].[Section] AS S
+		ON Upload.Code = S.SectionCode
+
+    DECLARE @WorkFlowStepTableRowCount INT;
+    SET @WorkFlowStepTableRowCount = (
+                                    SELECT COUNT(*) 
+                                    FROM [Enrollment].[EnrollmentDetails]
+                                    );
+    DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
+    DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
+    EXEC [Process].[usp_TrackWorkFlow] 'Procedure: [Project3].[LoadEnrollmentDetails] loads [EnrollmentDetails] table',
+                                       @WorkFlowStepTableRowCount,
+                                       @StartingDateTime,
+                                       @EndingDateTime,
+                                       @QueryTime,
+                                       @UserAuthorizationKey;
+END;
+GO
+
+/*
+Stored Procedure: [Project3].[LoadClassSchedule]
+-- =============================================
+-- Author:		Nicholas Kong & Edwin Wray
+-- Create date: 12/5/23
+-- Description:	Adds Classes to the ClassSchedule Table
+-- =============================================
+*/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [Project3].[LoadClassSchedule] @UserAuthorizationKey INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
+
+    INSERT INTO [ClassManagement].[ClassSchedule] (
+        SemesterID, SectionID, InstructorID, RoomID, ModeID, StartTime, EndTime, UserAuthorizationKey
+    ) 
+    SELECT DISTINCT
+        -- SemesterID
+        ( SELECT S.SemesterID
+            FROM [Enrollment].[Semester] AS S
+            WHERE S.SemesterName = 'Fall 2023'
+        ),
+        -- SectionID
+        ( SELECT TOP 1 S.SectionID
+            FROM [Academic].[Section] AS S
+            WHERE S.SectionCode = U.Code -- Section Code
+                AND S.SectionNumber = U.Sec -- Section Number
+        ),
+        -- InstructorID
+        ( SELECT TOP 1 I.InstructorID
+            FROM [Personnel].[Instructor] AS I
+            WHERE I.FirstName = COALESCE(NULLIF(LTRIM(RTRIM(SUBSTRING(U.Instructor, CHARINDEX(',', U.Instructor) + 2, LEN(U.Instructor)))), ''), 'none') -- FirstName
+                AND I.LastName = COALESCE(NULLIF(LTRIM(RTRIM(SUBSTRING(U.Instructor, 1, CHARINDEX(',', U.Instructor) - 1))), ''), 'none') -- LastName
+        ),
+        -- RoomID
+        ( SELECT TOP 1 R.RoomID
+            FROM [Facilities].[RoomLocation] AS R
+            WHERE R.RoomNumber = CASE
+                                    -- add the edge cases and then manually set it correctly
+                                    WHEN RIGHT(U.Location, 4) = 'H 17' THEN '17'
+                                    WHEN RIGHT(U.Location, 4) = '135H' THEN 'A135H'
+                                    WHEN RIGHT(U.Location, 4) = '135B' THEN 'A135B'
+                                    WHEN RIGHT(U.Location, 4) = 'H 08' THEN '08'
+                                    WHEN RIGHT(U.Location, 4) = 'H 09' THEN '09'
+                                    WHEN RIGHT(U.Location, 4) = 'H 12' THEN '12'
+                                    WHEN RIGHT(U.Location, 4) = 'H 17' THEN '17'
+                                    WHEN RIGHT(U.Location, 4) = 'A 11' THEN '11'
+                                    -- checks for null and empty string, if so set default string named TBD
+                                    WHEN U.Location IS NULL OR LTRIM(RTRIM(U.Location)) = '' THEN 'TBD'
+                                    ELSE LTRIM(RTRIM(RIGHT(U.Location, 4)))
+                                END
+        ),
+        -- ModeID
+        ( SELECT TOP 1 M.ModeID
+            FROM [ClassManagement].[ModeOfInstruction] AS M
+            WHERE M.ModeName = U.[Mode of Instruction]
+        ),
+        -- StartTime
+		CONVERT(TIME, NULLIF(LEFT(U.Time, CHARINDEX('-', U.Time) - 1), 'TBD'), 108), 
+		--EndTime
+		CONVERT(TIME, NULLIF(RIGHT(U.Time, LEN(U.Time) - CHARINDEX('-', U.Time)), 'TBD'), 108),
+        @UserAuthorizationKey
+    FROM [Uploadfile].[CurrentSemesterCourseOfferings] AS U
+
+    DECLARE @WorkFlowStepTableRowCount INT;
+    SET @WorkFlowStepTableRowCount = (
+                                    SELECT COUNT(*) 
+                                    FROM [ClassManagement].[ClassSchedule]
+                                    );
+    DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
+    DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
+    EXEC [Process].[usp_TrackWorkFlow] 'Add Class Data',
+                                       @WorkFlowStepTableRowCount,
+                                       @StartingDateTime,
+                                       @EndingDateTime,
+                                       @QueryTime,
+                                       @UserAuthorizationKey;
+END;
+GO
+
+/*
+Stored Procedure: [Project3].[LoadClassDays]
+-- =============================================
+-- Author:		Aryeh Richman
+-- Create date: 12/10/23
+-- Description:	Adds the values to the Class / Day bridge table
+-- =============================================
+*/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE OR ALTER PROCEDURE [Project3].[LoadClassDays] @UserAuthorizationKey INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @StartingDateTime DATETIME2 = SYSDATETIME();
+
+    INSERT INTO [ClassManagement].[ClassDays] (
+        ClassID, DayID, UserAuthorizationKey
+    )
+    SELECT DISTINCT C.ClassID, D.DayID, @UserAuthorizationKey
+    FROM ClassManagement.ClassSchedule AS C
+        CROSS JOIN ClassManagement.[Days] AS D
+        INNER JOIN Academic.Section AS S 
+            ON S.SectionID = C.SectionID
+        INNER JOIN Uploadfile.CurrentSemesterCourseOfferings AS U
+            ON U.Code = S.SectionCode
+        CROSS APPLY dbo.SplitString(U.Day, ',') AS SS
+        WHERE D.DayAbbreviation = LTRIM(RTRIM(SS.Value))
+
+    DECLARE @WorkFlowStepTableRowCount INT;
+    SET @WorkFlowStepTableRowCount = (
+                                    SELECT COUNT(*) 
+                                    FROM [ClassManagement].[ClassDays]
+                                    );
+    DECLARE @EndingDateTime DATETIME2 = SYSDATETIME();
+    DECLARE @QueryTime BIGINT = CAST(DATEDIFF(MILLISECOND, @StartingDateTime, @EndingDateTime) AS bigint);
+    EXEC [Process].[usp_TrackWorkFlow] 'Add ClassDays Data',
                                        @WorkFlowStepTableRowCount,
                                        @StartingDateTime,
                                        @EndingDateTime,
@@ -2177,9 +2177,9 @@ BEGIN
 	-- Ahnaf
 	EXEC [Project3].[LoadEnrollmentDetails] @UserAuthorizationKey = 5
     -- Edwin
-    EXEC [Project3].[LoadClassSchedule] @UserAuthorizationKey = 4 -- still needs work
-	-- Aryeh
-    EXEC [Project3].[LoadClassDays]  @UserAuthorizationKey = 6 -- still needs work
+    EXEC [Project3].[LoadClassSchedule] @UserAuthorizationKey = 4
+    -- Aryeh
+    EXEC [Project3].[LoadClassDays]  @UserAuthorizationKey = 6
 
     --	Check row count before truncation
     EXEC [Project3].[ShowTableStatusRowCount] @UserAuthorizationKey = 6,
