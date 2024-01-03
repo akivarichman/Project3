@@ -6,7 +6,7 @@ Fall 2023
 
 ## Project 3 Goal:
 
-TBD
+Convert [Uploadfile].[CurrentSemesterCourseOfferings] data into an entity relationship diagram (ERD) design and load the data into the tables.
 
 ## Team Members:
 
